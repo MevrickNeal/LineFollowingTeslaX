@@ -1,8 +1,8 @@
 /*
  * =================================================================================
- * Project: Advanced Line Follower Robot - v0.2 for Arduino Nano with OLED
+ * Project: Advanced Line Follower Robot - v0.3 for Arduino Nano with OLED
  * Description: Controller sketch for Arduino Nano using an SSD1306 OLED display
- * and push buttons for a standalone user interface.
+ * and push buttons for a standalone user interface. (Memory Optimized)
  * Platform: Arduino Nano (ATmega328P)
  * Author: Lian Mollick
  * Hardware:
@@ -74,14 +74,22 @@ int tuningSelection = 0; // 0=Kp, 1=Ki, 2=Kd
 unsigned long lastButtonPressTime = 0;
 const int DEBOUNCE_DELAY = 200; // ms
 
+// --- DIAGNOSTIC FUNCTION ---
+// Helper function to check available SRAM
+int getFreeRam() {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
+
 // --- CORE FUNCTIONS ---
 
 void setup() {
     if (DEBUG) { Serial.begin(115200); }
     
-    // Initialize Hardware
-    initMotors();
+    // Initialize all hardware
     initButtons();
+    initMotors();
     initDisplay();
 
     // Load saved settings from EEPROM
@@ -126,16 +134,28 @@ void initButtons() {
 }
 
 void initDisplay() {
+    if(DEBUG){
+        Serial.print(F("Free RAM before display.begin(): "));
+        Serial.println(getFreeRam());
+    }
+
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         if (DEBUG) { Serial.println(F("SSD1306 allocation failed")); }
-        for (;;); // Don't proceed, loop forever
+        while(true); // Stop forever
     }
+    
+    if(DEBUG){
+        Serial.println(F("Display Initialized!"));
+        Serial.print(F("Free RAM after display.begin(): "));
+        Serial.println(getFreeRam());
+    }
+
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
-    display.println("Line Follower v0.2");
-    display.println("Initializing...");
+    display.println(F("Line Follower v0.3"));
+    display.println(F("Initializing..."));
     display.display();
     delay(1000);
 }
@@ -213,49 +233,49 @@ void updateDisplay() {
 
     switch (currentSystemState) {
         case STATE_MENU:
-            display.println("--- MAIN MENU ---");
-            display.println(menuSelection == 0 ? "> Run" : "  Run");
-            display.println(menuSelection == 1 ? "> Calibrate" : "  Calibrate");
-            display.println(menuSelection == 2 ? "> Tune PID" : "  Tune PID");
-            display.println(menuSelection == 3 ? "> Status" : "  Status");
+            display.println(F("--- MAIN MENU ---"));
+            display.println(menuSelection == 0 ? F("> Run") : F("  Run"));
+            display.println(menuSelection == 1 ? F("> Calibrate") : F("  Calibrate"));
+            display.println(menuSelection == 2 ? F("> Tune PID") : F("  Tune PID"));
+            display.println(menuSelection == 3 ? F("> Status") : F("  Status"));
             if (!isCalibrated) {
                 display.setCursor(0, 56);
-                display.print("NEEDS CALIBRATION!");
+                display.print(F("NEEDS CALIBRATION!"));
             }
             break;
             
         case STATE_TUNING_PID:
-            display.println("--- TUNE PID ---");
-            display.print(tuningSelection == 0 ? ">Kp:" : " Kp:"); display.println(pidGains.Kp);
-            display.print(tuningSelection == 1 ? ">Ki:" : " Ki:"); display.println(pidGains.Ki);
-            display.print(tuningSelection == 2 ? ">Kd:" : " Kd:"); display.println(pidGains.Kd);
+            display.println(F("--- TUNE PID ---"));
+            display.print(tuningSelection == 0 ? F(">Kp:") : F(" Kp:")); display.println(pidGains.Kp);
+            display.print(tuningSelection == 1 ? F(">Ki:") : F(" Ki:")); display.println(pidGains.Ki);
+            display.print(tuningSelection == 2 ? F(">Kd:") : F(" Kd:")); display.println(pidGains.Kd);
             display.setCursor(0, 56);
-            display.print("UP/DN=Change, SEL=Next");
+            display.print(F("UP/DN=Change, SEL=Next"));
             break;
             
         case STATE_SHOW_STATUS:
-             display.println("--- SYSTEM STATUS ---");
-             display.print("Calibrated: "); display.println(isCalibrated ? "Yes" : "No");
-             display.println("--- PID Gains ---");
-             display.print(" P:"); display.println(pidGains.Kp);
-             display.print(" I:"); display.println(pidGains.Ki);
-             display.print(" D:"); display.println(pidGains.Kd);
+             display.println(F("--- SYSTEM STATUS ---"));
+             display.print(F("Calibrated: ")); display.println(isCalibrated ? F("Yes") : F("No"));
+             display.println(F("--- PID Gains ---"));
+             display.print(F(" P:")); display.println(pidGains.Kp);
+             display.print(F(" I:")); display.println(pidGains.Ki);
+             display.print(F(" D:")); display.println(pidGains.Kd);
              display.setCursor(0, 56);
-             display.print("Press SEL to return");
+             display.print(F("Press SEL to return"));
             break;
 
         case STATE_RUNNING: { // Braces to allow local variable declaration
             int sensorValues[NUM_SENSORS];
             readSensors(sensorValues);
             float error = calculateError(sensorValues);
-            display.println("--- RUNNING ---");
-            display.print("Error: "); display.println(error);
-            display.println("----------------");
-            display.print("P:"); display.print(pidGains.Kp);
-            display.print(" I:"); display.print(pidGains.Ki);
-            display.print(" D:"); display.println(pidGains.Kd);
+            display.println(F("--- RUNNING ---"));
+            display.print(F("Error: ")); display.println(error);
+            display.println(F("----------------"));
+            display.print(F("P:")); display.print(pidGains.Kp);
+            display.print(F(" I:")); display.print(pidGains.Ki);
+            display.print(F(" D:")); display.println(pidGains.Kd);
             display.setCursor(0, 56);
-            display.print("Press SEL to STOP");
+            display.print(F("Press SEL to STOP"));
             break;
         }
         case STATE_CALIBRATING:
@@ -291,18 +311,18 @@ float runPID(float error) {
 // --- SENSORS & CALIBRATION ---
 
 void runCalibrationRoutine() {
-    // Step 1: Calibrate for White
+    // This routine also uses F() macro for its display text
     display.clearDisplay();
     display.setCursor(0,0);
-    display.println("--- CALIBRATION ---");
-    display.println("Place sensors on WHITE");
-    display.println("and press SELECT.");
+    display.println(F("--- CALIBRATION ---"));
+    display.println(F("Place on WHITE"));
+    display.println(F("and press SELECT."));
     display.display();
 
     while(digitalRead(BTN_SELECT) == HIGH) { /* Wait for press */ }
     lastButtonPressTime = millis(); // Update debounce timer
 
-    display.println("Calibrating...");
+    display.println(F("Calibrating..."));
     display.display();
     
     // Initialize min/max
@@ -326,15 +346,15 @@ void runCalibrationRoutine() {
     // Step 2: Calibrate for Black
     display.clearDisplay();
     display.setCursor(0,0);
-    display.println("--- CALIBRATION ---");
-    display.println("Place sensors on BLACK");
-    display.println("and press SELECT.");
+    display.println(F("--- CALIBRATION ---"));
+    display.println(F("Place on BLACK"));
+    display.println(F("and press SELECT."));
     display.display();
 
     while(digitalRead(BTN_SELECT) == HIGH) { /* Wait for press */ }
     lastButtonPressTime = millis();
     
-    display.println("Calibrating...");
+    display.println(F("Calibrating..."));
     display.display();
 
     setMotorSpeeds(-80, 80); // Rotate again
@@ -405,25 +425,25 @@ void stopMotors() {
 // --- EEPROM PERSISTENCE ---
 
 void saveSettings() {
-    if (DEBUG) { Serial.print("Saving settings to EEPROM..."); }
+    if (DEBUG) { Serial.print(F("Saving settings to EEPROM...")); }
     EEPROM.put(0, pidGains);
     EEPROM.put(sizeof(pidGains), sensorMinValues);
     EEPROM.put(sizeof(pidGains) + sizeof(sensorMinValues), sensorMaxValues);
-    if (DEBUG) { Serial.println(" Done."); }
+    if (DEBUG) { Serial.println(F(" Done.")); }
 }
 
 void loadSettings() {
-    if (DEBUG) { Serial.print("Loading settings from EEPROM..."); }
+    if (DEBUG) { Serial.print(F("Loading settings from EEPROM...")); }
     EEPROM.get(0, pidGains);
     EEPROM.get(sizeof(pidGains), sensorMinValues);
     EEPROM.get(sizeof(pidGains) + sizeof(sensorMinValues), sensorMaxValues);
     
     if(isnan(pidGains.Kp) || pidGains.Kp > 1000 || pidGains.Kp < 0) {
-        if (DEBUG) { Serial.println(" Invalid settings, using defaults."); }
+        if (DEBUG) { Serial.println(F(" Invalid settings, using defaults.")); }
         pidGains.Kp = 1.0; pidGains.Ki = 0.0; pidGains.Kd = 0.0;
         isCalibrated = false;
     } else {
-        if (DEBUG) { Serial.println(" Done."); }
+        if (DEBUG) { Serial.println(F(" Done.")); }
         isCalibrated = true;
     }
 }
