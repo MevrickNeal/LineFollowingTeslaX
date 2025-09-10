@@ -1,8 +1,8 @@
 /*
  * =================================================================================
- * Project: Advanced Line Follower Robot - v0.5 with Buttons & Encoder
- * Description: Controller sketch using an SSD1306 OLED, three push buttons, AND
- * a KY-040 Rotary Encoder for a flexible user interface. (Memory Optimized)
+ * Project: Advanced Line Follower Robot - v0.4 Push Button Only
+ * Description: Controller sketch using an SSD1306 OLED and three push buttons
+ * for a flexible user interface. (Memory Optimized)
  * Platform: Arduino Nano (ATmega328P)
  * Author: Lian Mollick
  * Project: NEAL
@@ -11,7 +11,6 @@
  * - L298N Motor Driver
  * - SSD1306 I2C OLED Display
  * - 3x Push Buttons (Up, Down, Select)
- * - KY-040 Rotary Encoder (CLK, DT, SW)
  * =================================================================================
  */
 
@@ -38,15 +37,10 @@ const bool DEBUG = true;
 const int SENSOR_PINS[8] = {A0, A1, A2, A3, A4, A5, A6, A7};
 #define NUM_SENSORS 8
 
-// Original Push Buttons
+// Push Buttons
 #define BTN_UP 2
 #define BTN_DOWN 3
 #define BTN_SELECT 4
-
-// **NEW** Rotary Encoder Pins (using non-interrupt pins)
-#define ENCODER_CLK A6
-#define ENCODER_DT A7
-#define ENCODER_SW A5
 
 // OLED Display
 #define SCREEN_WIDTH 128
@@ -72,10 +66,9 @@ const int MAIN_MENU_ITEMS = 4;
 int tuningSelection = 0;
 const int TUNE_MENU_ITEMS = 4; // Kp, Ki, Kd, Back
 
-// Input Debouncing & Encoder State
+// Input Debouncing
 unsigned long lastInputTime = 0;
 const int DEBOUNCE_DELAY = 200;
-int encoderCLK_lastState = 0; // For polling the encoder
 
 // --- DIAGNOSTIC FUNCTION ---
 int getFreeRam() {
@@ -88,7 +81,7 @@ int getFreeRam() {
 
 void setup() {
     if (DEBUG) { Serial.begin(115200); }
-    initButtonsAndEncoder();
+    initButtons();
     initMotors();
     initDisplay();
     loadSettings();
@@ -97,7 +90,6 @@ void setup() {
 
 void loop() {
     handleButtonInput();
-    handleEncoderInput(); // Now we handle both inputs
 
     switch (currentSystemState) {
         case STATE_RUNNING:
@@ -121,16 +113,10 @@ void initMotors() {
     stopMotors();
 }
 
-void initButtonsAndEncoder() {
-    // Original Buttons
+void initButtons() {
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
-    // New Encoder
-    pinMode(ENCODER_CLK, INPUT_PULLUP);
-    pinMode(ENCODER_DT, INPUT_PULLUP);
-    pinMode(ENCODER_SW, INPUT_PULLUP);
-    encoderCLK_lastState = digitalRead(ENCODER_CLK);
 }
 
 void initDisplay() {
@@ -141,13 +127,15 @@ void initDisplay() {
     }
     if(DEBUG){ Serial.println(F("Display Initialized!")); }
     display.clearDisplay();
-    display.setTextSize(1);
+    display.setTextSize(2);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println(F("Line Follower v0.5"));
-    display.println(F("Buttons + Encoder"));
+    display.setCursor(15, 10);
+    display.println(F("Project:"));
+    display.setCursor(35, 30);
+    display.println(F("NEAL"));
     display.display();
-    delay(1500);
+    delay(2000);
+    display.setTextSize(1);
 }
 
 // --- UI & INPUT HANDLING ---
@@ -156,7 +144,6 @@ void processUpAction() {
     if (currentSystemState == STATE_MENU) {
         menuSelection = (menuSelection > 0) ? menuSelection - 1 : MAIN_MENU_ITEMS - 1;
     } else if (currentSystemState == STATE_TUNING_PID) {
-        // Only adjust values if not on the "Back" option
         if (tuningSelection < TUNE_MENU_ITEMS - 1) {
             if (tuningSelection == 0) pidGains.Kp += 0.1;
             if (tuningSelection == 1) pidGains.Ki += 0.01;
@@ -169,7 +156,6 @@ void processDownAction() {
     if (currentSystemState == STATE_MENU) {
         menuSelection = (menuSelection < MAIN_MENU_ITEMS - 1) ? menuSelection + 1 : 0;
     } else if (currentSystemState == STATE_TUNING_PID) {
-        // Only adjust values if not on the "Back" option
         if (tuningSelection < TUNE_MENU_ITEMS - 1) {
             if (tuningSelection == 0) pidGains.Kp -= 0.1;
             if (tuningSelection == 1) pidGains.Ki -= 0.01;
@@ -188,7 +174,6 @@ void processSelectAction() {
         else if (menuSelection == 2) currentSystemState = STATE_TUNING_PID;
         else if (menuSelection == 3) currentSystemState = STATE_SHOW_STATUS;
     } else if (currentSystemState == STATE_TUNING_PID) {
-        // If we are on "Back", save and exit. Otherwise, cycle to the next item.
         if (tuningSelection == TUNE_MENU_ITEMS - 1) {
             saveSettings();
             currentSystemState = STATE_MENU;
@@ -219,33 +204,6 @@ void handleButtonInput() {
         updateNeeded = true;
     }
 
-    if (updateNeeded) {
-        lastInputTime = millis();
-        updateDisplay();
-    }
-}
-
-void handleEncoderInput() {
-    bool updateNeeded = false;
-
-    // Handle encoder switch press (acts as SELECT)
-    if (digitalRead(ENCODER_SW) == LOW && (millis() - lastInputTime > DEBOUNCE_DELAY)) {
-        processSelectAction();
-        updateNeeded = true;
-    }
-
-    // Handle encoder rotation (polling method)
-    int clkState = digitalRead(ENCODER_CLK);
-    if (clkState != encoderCLK_lastState && clkState == LOW) {
-        if (digitalRead(ENCODER_DT) == LOW) {
-            processDownAction(); // Turned Clockwise
-        } else {
-            processUpAction(); // Turned Counter-Clockwise
-        }
-        updateNeeded = true;
-    }
-    encoderCLK_lastState = clkState;
-    
     if (updateNeeded) {
         lastInputTime = millis();
         updateDisplay();
@@ -345,7 +303,7 @@ void runCalibrationRoutine() {
     display.println(F("and press Select."));
     display.display();
 
-    while(digitalRead(BTN_SELECT) == HIGH && digitalRead(ENCODER_SW) == HIGH) { /* Wait for press */ }
+    while(digitalRead(BTN_SELECT) == HIGH) { /* Wait for press */ }
     lastInputTime = millis();
 
     display.println(F("Calibrating..."));
@@ -375,7 +333,7 @@ void runCalibrationRoutine() {
     display.println(F("and press Select."));
     display.display();
 
-    while(digitalRead(BTN_SELECT) == HIGH && digitalRead(ENCODER_SW) == HIGH) { /* Wait */ }
+    while(digitalRead(BTN_SELECT) == HIGH) { /* Wait */ }
     lastInputTime = millis();
     
     display.println(F("Calibrating..."));
