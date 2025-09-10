@@ -1,0 +1,327 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LFR-01 Control Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2670&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+        }
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .widget {
+            background: rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn { @apply px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 ease-in-out; }
+        .btn-red { @apply bg-red-600 text-white shadow-lg shadow-red-500/30 hover:bg-red-700 active:scale-95; }
+        .btn-glass { @apply bg-white/10 text-white hover:bg-white/20 active:scale-95; }
+        .btn-danger { @apply bg-red-600 text-white shadow-lg shadow-red-500/30 hover:bg-red-700 active:scale-95; }
+
+        /* Custom Slider Styles */
+        input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: rgba(0,0,0,0.3); border-radius: 5px; outline: none; transition: opacity .2s; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; background: #fff; border-radius: 50%; border: 4px solid #4f46e5; cursor: pointer; transition: background 0.3s; }
+        input[type="range"]:hover::-webkit-slider-thumb { background: #ddd; }
+        input[type="range"]#kpSlider::-webkit-slider-thumb { border-color: #ef4444; }
+        input[type="range"]#kiSlider::-webkit-slider-thumb { border-color: #22c55e; }
+        input[type="range"]#kdSlider::-webkit-slider-thumb { border-color: #3b82f6; }
+    </style>
+</head>
+<body class="text-white h-screen flex flex-col items-center justify-center p-4 md:p-6">
+
+    <main class="w-full h-full flex flex-col gap-4">
+        <!-- Header -->
+        <header class="flex justify-between items-center glass-panel rounded-2xl px-6 py-3 shrink-0">
+            <h1 class="text-2xl font-bold tracking-tight">LFR-01 Dashboard</h1>
+            <div class="flex items-center gap-4">
+                <button id="runButton" class="btn btn-red" disabled>Start Robot</button>
+                <button id="connectButton" class="btn btn-glass">Connect</button>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-12 gap-6 flex-grow min-h-0">
+            <!-- Left Panel: 3D View -->
+            <div class="col-span-12 md:col-span-8 glass-panel rounded-3xl relative">
+                 <canvas id="robotCanvas" class="absolute inset-0"></canvas>
+            </div>
+
+            <!-- Right Panel: Widgets -->
+            <div class="col-span-12 md:col-span-4 flex flex-col gap-6">
+                <div class="widget rounded-3xl p-6">
+                    <h2 class="font-bold text-xl mb-4">PID Tuning</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label for="kpSlider" class="font-semibold text-red-400">Proportional (P)</label>
+                                <span id="kpValue" class="font-mono text-lg">1.00</span>
+                            </div>
+                            <input type="range" id="kpSlider" min="0" max="10" step="0.05" value="1.0">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label for="kiSlider" class="font-semibold text-green-400">Integral (I)</label>
+                                <span id="kiValue" class="font-mono text-lg">0.10</span>
+                            </div>
+                            <input type="range" id="kiSlider" min="0" max="1" step="0.01" value="0.1">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label for="kdSlider" class="font-semibold text-blue-400">Derivative (D)</label>
+                                <span id="kdValue" class="font-mono text-lg">0.07</span>
+                            </div>
+                            <input type="range" id="kdSlider" min="0" max="5" step="0.01" value="0.07">
+                        </div>
+                    </div>
+                </div>
+                 <div class="widget rounded-3xl p-6 flex-grow flex items-center justify-center">
+                    <div class="text-center text-gray-400">
+                        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L15 9l-5.447 2.724A1 1 0 019 12.618V20zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <p class="mt-2 font-semibold">Mission Planner</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Dock -->
+        <footer class="glass-panel rounded-2xl px-6 py-3 shrink-0 flex justify-center items-center gap-8">
+             <div class="text-center">
+                <h3 class="font-semibold mb-2 text-xs text-gray-300 uppercase tracking-widest">SPEED</h3>
+                <div id="speedControls" class="flex gap-2 p-1.5 bg-black/20 rounded-full">
+                    <button class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg bg-white/10" data-speed="1">1</button>
+                    <button class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg bg-white/10" data-speed="2">2</button>
+                    <button class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg bg-red-600" data-speed="3">3</button>
+                </div>
+            </div>
+            <div class="text-center">
+                <h3 class="font-semibold mb-2 text-xs text-gray-300 uppercase tracking-widest">HEADLIGHT</h3>
+                 <button id="headlightButton" class="w-14 h-14 flex items-center justify-center rounded-full bg-black/20 border-2 border-white/10 transition-all">
+                    <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                </button>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        // --- State Variables ---
+        let port, writer, reader;
+        let isConnected = false, isRunning = false, headlightOn = false;
+        let currentSpeed = 3;
+        const pidValues = { p: 1.0, i: 0.1, d: 0.07 };
+        let partialData = '';
+
+        // --- UI Elements ---
+        const connectButton = document.getElementById('connectButton');
+        const runButton = document.getElementById('runButton');
+        const headlightButton = document.getElementById('headlightButton');
+        const speedControls = document.getElementById('speedControls');
+        const kpValueEl = document.getElementById('kpValue');
+        const kiValueEl = document.getElementById('kiValue');
+        const kdValueEl = document.getElementById('kdValue');
+        const kpSlider = document.getElementById('kpSlider');
+        const kiSlider = document.getElementById('kiSlider');
+        const kdSlider = document.getElementById('kdSlider');
+        
+        // --- Web Serial API Logic (no changes) ---
+        connectButton.addEventListener('click', () => isConnected ? disconnectSerial() : connectSerial());
+        
+        async function connectSerial() {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                writer = port.writable.getWriter();
+                startSerialReader();
+                isConnected = true;
+                connectButton.textContent = 'Disconnect';
+                runButton.disabled = false;
+            } catch (error) { alert('Failed to connect: ' + error.message); }
+        }
+
+        async function startSerialReader() {
+            const textDecoder = new TextDecoderStream();
+            port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    partialData += value;
+                    let newlineIndex;
+                    while ((newlineIndex = partialData.indexOf('\n')) !== -1) {
+                        const line = partialData.substring(0, newlineIndex).trim();
+                        partialData = partialData.substring(newlineIndex + 1);
+                        if (line) handleSerialData(line);
+                    }
+                }
+            } catch (error) { console.error("Reader error:", error); } 
+            finally { reader.releaseLock(); }
+        }
+
+        function handleSerialData(data) {
+            console.log(`Received: ${data}`);
+            const parts = data.split(',');
+            if (parts.length < 3 || parts[0] !== 'UPDATE') return;
+
+            const [, key, value] = parts;
+            pidValues[key] = parseFloat(value);
+            updatePidDisplay();
+        }
+
+        async function disconnectSerial() {
+            if (reader) await reader.cancel();
+            if (writer) await writer.close();
+            if (port) await port.close();
+            port = writer = reader = null;
+            isConnected = false;
+            runButton.disabled = true;
+            if (isRunning) toggleRunState();
+            connectButton.textContent = 'Connect';
+        }
+
+        async function writeToSerial(data) {
+            if (!isConnected) return;
+            try { await writer.write(new TextEncoder().encode(data + '\n')); }
+            catch (error) { console.error('Write error:', error); }
+        }
+        
+        // --- UI Event Handlers ---
+        runButton.addEventListener('click', toggleRunState);
+
+        function toggleRunState() {
+            isRunning = !isRunning;
+            runButton.textContent = isRunning ? 'Stop Robot' : 'Start Robot';
+            runButton.classList.toggle('btn-danger', isRunning);
+            runButton.classList.toggle('btn-red', !isRunning);
+            writeToSerial(`run=${isRunning ? 1 : 0}`);
+        }
+
+        headlightButton.addEventListener('click', () => {
+            headlightOn = !headlightOn;
+            updateHeadlightUI();
+            writeToSerial(`led=${headlightOn ? 1 : 0}`);
+        });
+
+        function updateHeadlightUI() {
+             headlightButton.classList.toggle('bg-green-500', headlightOn);
+             headlightButton.classList.toggle('border-green-400', headlightOn);
+             headlightButton.querySelector('svg').classList.toggle('text-white', headlightOn);
+        }
+
+        speedControls.addEventListener('click', (e) => {
+             if (e.target.tagName !== 'BUTTON') return;
+             const newSpeed = e.target.dataset.speed;
+             if (newSpeed !== currentSpeed) {
+                 speedControls.querySelector(`[data-speed="${currentSpeed}"]`).classList.remove('bg-red-600');
+                 speedControls.querySelector(`[data-speed="${currentSpeed}"]`).classList.add('bg-white/10');
+                 e.target.classList.add('bg-red-600');
+                 e.target.classList.remove('bg-white/10');
+                 currentSpeed = newSpeed;
+                 writeToSerial(`speed=${currentSpeed}`);
+             }
+        });
+        
+        // Updated PID handler for sliders
+        kpSlider.addEventListener('input', () => handlePidChange('p', kpSlider.value));
+        kiSlider.addEventListener('input', () => handlePidChange('i', kiSlider.value));
+        kdSlider.addEventListener('input', () => handlePidChange('d', kdSlider.value));
+
+        function handlePidChange(pid, value) {
+            pidValues[pid] = parseFloat(value);
+            updatePidDisplay();
+            writeToSerial(`${pid}=${pidValues[pid].toFixed(2)}`);
+        }
+
+        function updatePidDisplay() {
+            kpValueEl.textContent = pidValues.p.toFixed(2);
+            kiValueEl.textContent = pidValues.i.toFixed(2);
+            kdValueEl.textContent = pidValues.d.toFixed(2);
+            kpSlider.value = pidValues.p;
+            kiSlider.value = pidValues.i;
+            kdSlider.value = pidValues.d;
+        }
+
+        // --- Three.js (Enhanced Scene) ---
+        let scene, camera, renderer, robot, gridHelper;
+        function init3D() {
+            const canvas = document.getElementById('robotCanvas');
+            const container = canvas.parentElement;
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 4, 7);
+            camera.lookAt(0, 0, 0);
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+
+            // Handle resizing
+            const resizeObserver = new ResizeObserver(entries => {
+                const entry = entries[0];
+                const { width, height } = entry.contentRect;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+            resizeObserver.observe(container);
+
+            // Robot Model
+            const robotGroup = new THREE.Group();
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.8, roughness: 0.4 });
+            const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 4), bodyMaterial);
+            robotGroup.add(body);
+            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 32), wheelMaterial);
+            wheel.rotation.z = Math.PI / 2;
+            const wheel1 = wheel.clone(); wheel1.position.set(-1.75, 0, -0.5);
+            const wheel2 = wheel.clone(); wheel2.position.set(1.75, 0, -0.5);
+            robotGroup.add(wheel1, wheel2);
+            scene.add(robotGroup);
+            robot = robotGroup;
+            
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+            hemiLight.position.set(0, 20, 0);
+            scene.add(hemiLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(-3, 10, -10);
+            scene.add(dirLight);
+
+            // Grid Floor
+            gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+            scene.add(gridHelper);
+            
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (robot) {
+                robot.rotation.y += 0.005;
+                gridHelper.position.y = -0.25; // Keep grid below the robot
+            }
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('load', () => {
+            init3D();
+            updatePidDisplay();
+        });
+    </script>
+</body>
+</html>
+
